@@ -41,12 +41,32 @@ export default function SignupPage() {
     }
 
     try {
-      // In a real app, you would create the user account here
-      // For now, we'll just show a success message
-      alert("Account created successfully! Please use the demo credentials to login.")
+      const response = await fetch("http://localhost:8080/auth/signup", {
+        method: "POST",
+        headers: {
+          Accept: "application/json, text/plain, */*",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullName: formData.name,
+          email: formData.email,
+          password: formData.password,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // Success - redirect to login page
+      alert("Account created successfully! Please login with your credentials.")
       router.push("/login")
     } catch (err) {
-      setError("An error occurred during signup")
+      console.error("Signup error:", err)
+      setError(err instanceof Error ? err.message : "An error occurred during signup")
     } finally {
       setLoading(false)
     }

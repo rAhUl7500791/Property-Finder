@@ -25,20 +25,23 @@ export default function LoginPage() {
     setLoading(true)
     setError("")
 
+    console.log("[v0] Login form submitted with:", { email, password: "***" })
+
     try {
-      const user = authenticateUser(email, password)
+      const user = await authenticateUser(email, password)
+      console.log("[v0] Authentication result:", user)
+
       if (user) {
         setCurrentUser(user)
-        if (user.role === "agent") {
-          router.push("/dashboard")
-        } else {
-          router.push("/")
-        }
+        console.log("[v0] User set, redirecting to dashboard")
+        router.push("/dashboard")
       } else {
+        console.log("[v0] No user returned from authentication")
         setError("Invalid email or password")
       }
     } catch (err) {
-      setError("An error occurred during login")
+      console.error("[v0] Login error:", err)
+      setError("Login failed. Please check your credentials and try again.")
     } finally {
       setLoading(false)
     }
@@ -101,16 +104,16 @@ export default function LoginPage() {
                     </Link>
                   </p>
                 </div>
-              </form>
 
-              <div className="mt-6 p-4 bg-muted rounded-lg">
-                <p className="text-sm font-medium mb-2">Demo Credentials:</p>
-                <p className="text-xs text-muted-foreground">
-                  Email: agent@gmail.com
-                  <br />
-                  Password: agent@123
-                </p>
-              </div>
+                <div className="mt-6 p-4 bg-muted rounded-lg">
+                  <p className="text-sm font-medium mb-2">Demo Credentials:</p>
+                  <p className="text-xs text-muted-foreground">
+                    Email: Agent@test.com
+                    <br />
+                    Password: Test@123
+                  </p>
+                </div>
+              </form>
             </CardContent>
           </Card>
         </div>

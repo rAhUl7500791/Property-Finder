@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Phone, Mail } from "lucide-react"
-import { addQuery } from "@/lib/queries"
 
 interface InquiryFormProps {
   agent: {
@@ -36,15 +35,33 @@ export default function InquiryForm({ agent, propertyTitle, propertyId }: Inquir
     setLoading(true)
 
     try {
-      // Add query to the system
-      addQuery({
-        propertyId,
-        propertyTitle,
-        clientName: formData.name,
-        clientEmail: formData.email,
-        clientPhone: formData.phone,
-        message: formData.message,
+      // TODO: In future, get agentUserId from authenticated user context or agent selection
+      const HARDCODED_AGENT_USER_ID = "1" // Replace with dynamic agent selection
+
+      // TODO: In future, get propertyDetailId from property context or URL params
+      const HARDCODED_PROPERTY_DETAIL_ID = "1" // Replace with actual property ID
+
+      const response = await fetch("http://localhost:8080/open/raise-query", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullName: formData.name,
+          clientPhoneNumber: formData.phone,
+          clientEmail: formData.email,
+          message: formData.message,
+          agentUserId: HARDCODED_AGENT_USER_ID,
+          propertyDetailId: HARDCODED_PROPERTY_DETAIL_ID,
+        }),
       })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+const result = await response.text()
+      console.log("[v0] Query raised successfully:", result)
 
       alert("Thank you for your inquiry! The agent will contact you soon.")
 
@@ -56,6 +73,7 @@ export default function InquiryForm({ agent, propertyTitle, propertyId }: Inquir
         message: `I'm interested in learning more about ${propertyTitle}. Please contact me with additional information.`,
       })
     } catch (error) {
+      console.error("[v0] Error raising query:", error)
       alert("There was an error sending your inquiry. Please try again.")
     } finally {
       setLoading(false)

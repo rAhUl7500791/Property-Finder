@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,26 +19,148 @@ interface PropertyFormProps {
 
 export function PropertyForm({ property, onSubmit, onCancel, loading }: PropertyFormProps) {
   const [formData, setFormData] = useState({
-    title: property?.title || "",
+    propertyName: property?.title || "",
     location: property?.location || "",
     price: property?.price || 0,
     bedrooms: property?.bedrooms || 1,
     bathrooms: property?.bathrooms || 1,
-    sqft: property?.sqft || 0,
-    type: property?.type || "apartment",
+    dimension: property?.sqft || 0,
+    propertyType: property?.type || "apartment",
     status: property?.status || "active",
-    images: property?.images || ["/diverse-property-showcase.png"],
+    discription: property?.description || "",
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [images, setImages] = useState<File[]>([])
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([])
+  const [uploadingImages, setUploadingImages] = useState(false)
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = () => {
+        // Extract base64 string (remove data:image/jpeg;base64, prefix)
+        const base64String = (reader.result as string).split(",")[1]
+        resolve(base64String)
+      }
+      reader.onerror = (error) => reject(error)
+    })
+  }
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    setImages((prev) => [...prev, ...files])
+
+    // Create preview URLs
+    files.forEach((file) => {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setImagePreviewUrls((prev) => [...prev, event.target?.result as string])
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index))
+    setImagePreviewUrls((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const user = getCurrentUser()
-    if (!user) return
+    if (!user) {
+      alert("User not authenticated")
+      return
+    }
 
-    onSubmit({
-      ...formData,
-      agentEmail: user.email,
-    })
+    try {
+      setUploadingImages(true)
+
+      const imagesBase64 = await Promise.all(images.map((file) => fileToBase64(file)))
+
+      const token = localStorage.getItem("authToken")
+      const userId = localStorage.getItem("userId")
+      // Prepare images array in the format expected by the API
+      // Each image should have an 'imgbase64Format' field containing the base64 string
+      const imagesPayload = imagesBase64.map((base64String) => ({
+        imgbase64Format: base64String,
+      }))
+
+      const payload = {
+        propertyName: formData.propertyName,
+        propertyType: formData.propertyType.charAt(0).toUpperCase() + formData.propertyType.slice(1),
+        price: formData.price.toString(),
+        bedrooms: formData.bedrooms.toString(),
+        bathrooms: formData.bathrooms.toString(),
+        dimension: `${formData.dimension} sqft`,
+        status: formData.status.charAt(0).toUpperCase() + formData.status.slice(1),
+        discription: formData.discription,
+        location: formData.location,
+        userId: userId, // Use authenticated user's ID instead of hardcoded value
+        images: imagesPayload,
+      } 
+
+      console.log("[v0] Submitting property with images:", payload)
+      console.log("[v0] Auth token present:", !!token)
+      console.log("[v0] User ID from auth:", userId)
+
+      const response = await fetch("http://localhost:8080/property/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Failed to add property")
+      }
+
+      const result = await response.json()
+      console.log("[v0] Property added successfully:", result)
+
+      const transformedProperty = {
+        id: result.id || Date.now(), // Use API's id or generate one
+        title: result.propertyName || formData.propertyName,
+        location: result.location || formData.location,
+        price: result.price ? Number.parseInt(result.price) : formData.price,
+        bedrooms: result.bedrooms ? Number.parseInt(result.bedrooms) : formData.bedrooms,
+        bathrooms: result.bathrooms ? Number.parseInt(result.bathrooms) : formData.bathrooms,
+        sqft: result.dimension ? Number.parseInt(result.dimension) : formData.dimension,
+        type: result.propertyType || formData.propertyType,
+        status: (result.status || formData.status).toLowerCase(),
+        description: result.discription || formData.discription,
+        images: result.images || imagePreviewUrls,
+        views: result.views || 0, // Default to 0 if not returned
+      }
+
+      alert("Property added successfully!")
+
+      // Reset form
+      setFormData({
+        propertyName: "",
+        location: "",
+        price: 0,
+        bedrooms: 1,
+        bathrooms: 1,
+        dimension: 0,
+        propertyType: "apartment",
+        status: "active",
+        discription: "",
+      })
+      setImages([])
+      setImagePreviewUrls([])
+
+      onSubmit(transformedProperty)
+    } catch (error) {
+      console.error("[v0] Error adding property:", error)
+      alert(`Error: ${error instanceof Error ? error.message : "Failed to add property"}`)
+    } finally {
+      setUploadingImages(false)
+    }
   }
 
   const handleChange = (field: string, value: any) => {
@@ -58,11 +179,11 @@ export function PropertyForm({ property, onSubmit, onCancel, loading }: Property
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Property Title</Label>
+              <Label htmlFor="propertyName">Property Name</Label>
               <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => handleChange("title", e.target.value)}
+                id="propertyName"
+                value={formData.propertyName}
+                onChange={(e) => handleChange("propertyName", e.target.value)}
                 placeholder="e.g., Modern Downtown Apartment"
                 required
               />
@@ -92,12 +213,12 @@ export function PropertyForm({ property, onSubmit, onCancel, loading }: Property
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="sqft">Square Feet</Label>
+              <Label htmlFor="dimension">Square Feet</Label>
               <Input
-                id="sqft"
+                id="dimension"
                 type="number"
-                value={formData.sqft}
-                onChange={(e) => handleChange("sqft", Number.parseInt(e.target.value) || 0)}
+                value={formData.dimension}
+                onChange={(e) => handleChange("dimension", Number.parseInt(e.target.value) || 0)}
                 placeholder="1200"
                 required
               />
@@ -142,8 +263,8 @@ export function PropertyForm({ property, onSubmit, onCancel, loading }: Property
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="type">Property Type</Label>
-              <Select value={formData.type} onValueChange={(value) => handleChange("type", value)}>
+              <Label htmlFor="propertyType">Property Type</Label>
+              <Select value={formData.propertyType} onValueChange={(value) => handleChange("propertyType", value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -171,9 +292,66 @@ export function PropertyForm({ property, onSubmit, onCancel, loading }: Property
             </div>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="discription">Description</Label>
+            <textarea
+              id="discription"
+              value={formData.discription}
+              onChange={(e) => handleChange("discription", e.target.value)}
+              placeholder="Enter property description"
+              className="w-full p-2 border rounded-md"
+              rows={4}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="images">Upload Images</Label>
+            <div className="border-2 border-dashed rounded-lg p-6 text-center">
+              <input
+                id="images"
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById("images")?.click()}
+                disabled={uploadingImages}
+              >
+                {uploadingImages ? "Converting Images..." : "Choose Images"}
+              </Button>
+              <p className="text-sm text-gray-500 mt-2">Click to select multiple images</p>
+            </div>
+
+            {imagePreviewUrls.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                {imagePreviewUrls.map((url, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={url || "/placeholder.svg"}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-sm text-gray-600">{images.length} image(s) selected</p>
+          </div>
+
           <div className="flex space-x-4">
-            <Button type="submit" disabled={loading} className="flex-1">
-              {loading ? "Saving..." : property ? "Update Property" : "Add Property"}
+            <Button type="submit" disabled={loading || uploadingImages || images.length === 0} className="flex-1">
+              {loading || uploadingImages ? "Saving..." : property ? "Update Property" : "Add Property"}
             </Button>
             <Button type="button" variant="outline" onClick={onCancel} className="flex-1 bg-transparent">
               Cancel

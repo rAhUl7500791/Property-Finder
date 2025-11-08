@@ -64,10 +64,12 @@ export async function authenticateUser(email: string, password: string): Promise
     // Handle different possible response formats
     if (data.token || data.access_token || data.jwt) {
       const token = data.token || data.access_token || data.jwt
+      const userId = data.userId
 
       // Store token
       if (typeof window !== "undefined") {
         localStorage.setItem("authToken", token)
+        localStorage.setItem("userId", userId)
       }
 
       // Create user object from response

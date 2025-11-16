@@ -74,7 +74,7 @@ export async function authenticateUser(email: string, password: string): Promise
 
       // Create user object from response
       const user: User = {
-        id: data.user?.id || data.id || "1",
+        id: data.user?.userId || data.userId || null,
         email: data.user?.email || data.email || email,
         name: data.user?.name || data.user?.fullName || data.fullName || data.name || "Agent",
         role: data.user?.role || data.role || "agent",

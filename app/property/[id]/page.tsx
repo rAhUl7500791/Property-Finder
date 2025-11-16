@@ -1,25 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams, useSearchParams } from "next/navigation"
+import { useParams, useSearchParams } from 'next/navigation'
 import Link from "next/link"
 import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import {
-  MapPin,
-  Bed,
-  Bath,
-  Square,
-  Calendar,
-  User,
-  Mail,
-  ChevronLeft,
-  ChevronRight,
-  Loader,
-  AlertCircle,
-} from "lucide-react"
+import { MapPin, Bed, Bath, Square, Calendar, User, Mail, ChevronLeft, ChevronRight, Loader, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface PropertyImage {
@@ -289,7 +277,7 @@ export default function PropertyDetailPage() {
             </Card>
 
             {/* Contact Button */}
-            <Link href={`/inquiry?propertyId=${property.id}`}>
+            <Link href={`/inquiry?propertyId=${property.id}&property=${encodeURIComponent(JSON.stringify(property))}`}>
               <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-12">
                 Raise Query
               </Button>

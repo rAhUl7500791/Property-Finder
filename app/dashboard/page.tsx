@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { getCurrentUser } from "@/lib/auth"
-import { getAgentProperties, addProperty, updateProperty, deleteProperty, type Property } from "@/lib/properties"
+import { useRouter } from 'next/navigation'
+import { getCurrentUser, getAuthToken } from "@/lib/auth"
+import { addProperty, updateProperty, deleteProperty, type Property } from "@/lib/properties"
 import { getAgentQueries, resolveQuery, type Query } from "@/lib/queries"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,19 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Navigation } from "@/components/navigation"
 import { PropertyForm } from "@/components/property-form"
-import {
-  Home,
-  Plus,
-  MessageSquare,
-  CheckCircle,
-  Clock,
-  DollarSign,
-  TrendingUp,
-  Eye,
-  Edit,
-  Trash2,
-  Reply,
-} from "lucide-react"
+import { Home, Plus, MessageSquare, CheckCircle, Clock, DollarSign, TrendingUp, Eye, Edit, Trash2, Reply } from 'lucide-react'
 
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
@@ -38,17 +26,109 @@ export default function DashboardPage() {
   const [response, setResponse] = useState("")
   const router = useRouter()
 
+  const fetchAgentProperties = async (userId: string) => {
+    try {
+      const token = getAuthToken()
+      console.log("[v0] Fetching properties for userId:", userId)
+      
+      const response = await fetch(`http://localhost:8080/property/findByAgentId?userId=${userId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        console.log("[v0] Failed to fetch properties:", response.status)
+        return []
+      }
+
+      const data = await response.json()
+      console.log("[v0] Properties fetched:", data)
+      
+      const allQueries: Query[] = []
+      
+      // Transform API response to match Property interface
+      const transformedProperties = (Array.isArray(data) ? data : data.content || []).map((prop: any) => {
+        // Extract queries from this property
+        if (prop.queries && Array.isArray(prop.queries)) {
+          prop.queries.forEach((q: any) => {
+            allQueries.push({
+              id: q.id,
+              clientName: q.fullName,
+              clientEmail: q.clientEmail,
+              clientPhone: q.clientPhoneNumber,
+              message: q.queryText || "Interested in this property",
+              propertyTitle: prop.propertyName,
+              propertyId: prop.id,
+              status: q.status?.toLowerCase() === "open" ? "pending" : q.status?.toLowerCase(),
+              createdAt: new Date(),
+              resolvedAt: undefined,
+              agentResponse: undefined,
+            })
+          })
+        }
+        
+        return {
+          id: prop.id,
+          title: prop.propertyName || prop.title,
+          location: prop.location || "",
+          price: prop.price || 0,
+          bedrooms: prop.bedrooms || 0,
+          bathrooms: prop.bathrooms || 0,
+          sqft: prop.dimension || prop.sqft || 0,
+          views: prop.views || 0,
+          status: prop.status?.toLowerCase() || "active",
+          type: prop.propertyType || prop.type || "residential",
+          images: prop.images && Array.isArray(prop.images) ? prop.images.map((img: any) => img.imageUrl || img.imgbase64Format) : [],
+        }
+      })
+      
+      // Store queries in state
+      setQueries(allQueries)
+      
+      return transformedProperties
+    } catch (error) {
+      console.error("[v0] Error fetching properties:", error)
+      return []
+    }
+  }
+
+  const fetchAgentQueries = async (userId: string) => {
+    try {
+      const token = getAuthToken()
+      console.log("[v0] Fetching queries for userId:", userId)
+      
+      // Queries are extracted in fetchAgentProperties and set in state directly
+      return []
+    } catch (error) {
+      console.error("[v0] Error fetching queries:", error)
+      return []
+    }
+  }
+
   useEffect(() => {
     const currentUser = getCurrentUser()
     if (!currentUser || currentUser.role !== "agent") {
       router.push("/login")
       return
     }
+    
     setUser(currentUser)
-    setProperties(getAgentProperties(currentUser.email))
-    setQueries(getAgentQueries(currentUser.email))
-    setLoading(false)
-  }, [router])
+    setProperties([])
+    setQueries([])
+    setLoading(true)
+    
+    const loadData = async () => {
+      const agentProperties = await fetchAgentProperties(currentUser.id)
+      setProperties(agentProperties)
+      
+      setLoading(false)
+    }
+    
+    loadData()
+  }, [router, user?.id]) // Added user?.id to dependency array so it refetches when user changes
 
   const handleAddProperty = async (propertyData: any) => {
     setFormLoading(true)
@@ -148,7 +228,11 @@ export default function DashboardPage() {
     activeListings: properties.filter((p) => p.status === "active").length,
     pendingQueries: queries.filter((q) => q.status === "pending").length,
     resolvedQueries: queries.filter((q) => q.status === "resolved").length,
-    totalRevenue: properties.reduce((sum, p) => (p.status === "sold" ? sum + p.price : sum), 0),
+    totalRevenue: properties.reduce(
+      (sum, p) =>
+        p.status === "sold" ? sum + (typeof p.price === "string" ? Number.parseInt(p.price) : p.price) : sum,
+      0,
+    ),
     monthlyViews: properties.reduce((sum, p) => sum + p.views, 0),
   }
 
@@ -272,7 +356,12 @@ export default function DashboardPage() {
                         <div key={property.id} className="flex items-center justify-between p-4 border rounded-lg">
                           <div>
                             <h4 className="font-medium">{property.title}</h4>
-                            <p className="text-sm text-muted-foreground">${property.price.toLocaleString()}</p>
+                            <p className="text-sm text-muted-foreground">
+                              $
+                              {typeof property.price === "string"
+                                ? Number.parseInt(property.price)
+                                : property.price.toLocaleString()}
+                            </p>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Badge variant={property.status === "active" ? "default" : "secondary"}>
@@ -342,7 +431,13 @@ export default function DashboardPage() {
                               <div>
                                 <h3 className="text-xl font-semibold">{property.title}</h3>
                                 <p className="text-muted-foreground">{property.location}</p>
-                                <p className="text-2xl font-bold text-primary">${property.price.toLocaleString()}</p>
+                                <p className="text-2xl font-bold text-primary">
+                                  $
+                                  {(typeof property.price === "string"
+                                    ? Number.parseInt(property.price)
+                                    : property.price || 0
+                                  ).toLocaleString()}
+                                </p>
                               </div>
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
@@ -356,7 +451,12 @@ export default function DashboardPage() {
                               </div>
                               <div>
                                 <p className="text-sm text-muted-foreground">Sq Ft</p>
-                                <p className="font-medium">{property.sqft.toLocaleString()}</p>
+                                <p className="font-medium">
+                                  {(typeof property.sqft === "string"
+                                    ? Number.parseInt(property.sqft)
+                                    : property.sqft || 0
+                                  ).toLocaleString()}
+                                </p>
                               </div>
                               <div>
                                 <p className="text-sm text-muted-foreground">Views</p>
@@ -492,7 +592,7 @@ export default function DashboardPage() {
             <TabsContent value="analytics">
               <Card>
                 <CardHeader>
-                  <CardTitle>Analytics & Reports</CardTitle>
+                  <CardTitle className="text-lg">Analytics & Reports</CardTitle>
                   <CardDescription>View detailed analytics and performance reports</CardDescription>
                 </CardHeader>
                 <CardContent>

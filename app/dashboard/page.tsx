@@ -31,7 +31,7 @@ export default function DashboardPage() {
       const token = getAuthToken()
       console.log("[v0] Fetching properties for userId:", userId)
       
-      const response = await fetch(`http://localhost:8080/property/findByAgentId?userId=${userId}`, {
+      const response = await fetch(`https://property-finder-service.onrender.com/property/findByAgentId?userId=${userId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

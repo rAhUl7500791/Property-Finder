@@ -41,7 +41,7 @@ export default function SignupPage() {
     }
 
     try {
-      const response = await fetch("http://localhost:8080/auth/signup", {
+      const response = await fetch("https://property-finder-service.onrender.com/auth/signup", {
         method: "POST",
         headers: {
           Accept: "application/json, text/plain, */*",

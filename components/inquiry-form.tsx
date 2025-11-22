@@ -36,7 +36,7 @@ export default function InquiryForm({ agent, propertyTitle, propertyId, agentUse
     setLoading(true)
 
     try {
-      const response = await fetch("http://localhost:8080/open/raise-query", {
+      const response = await fetch("https://property-finder-service.onrender.com/open/raise-query", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

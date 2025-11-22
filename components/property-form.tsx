@@ -105,7 +105,7 @@ export function PropertyForm({ property, onSubmit, onCancel, loading }: Property
       console.log("[v0] Auth token present:", !!token)
       console.log("[v0] User ID from auth:", userId)
 
-      const response = await fetch("http://localhost:8080/property/add", {
+      const response = await fetch("https://property-finder-service.onrender.com/property/add", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -16,7 +16,7 @@ interface LoginResponse {
   fullName?: string
 }
 
-const API_BASE_URL = "http://localhost:8080"
+const API_BASE_URL = "https://property-finder-service.onrender.com"
 
 // Store user in localStorage
 export function setCurrentUser(user: User): void {

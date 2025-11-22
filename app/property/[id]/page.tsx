@@ -73,7 +73,7 @@ export default function PropertyDetailPage() {
   const fetchPropertyFromAPI = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`http://localhost:8080/open/property/${propertyId}`)
+      const response = await fetch(`https://property-finder-service.onrender.com/open/property/${propertyId}`)
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)

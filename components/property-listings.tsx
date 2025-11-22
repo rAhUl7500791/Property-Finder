@@ -59,7 +59,7 @@ export function PropertyListings() {
       setLoading(true)
       setError(null)
 
-      const response = await fetch(`http://localhost:8080/open/property/getAll?page=${page}&size=4`)
+      const response = await fetch(`https://property-finder-service.onrender.com/open/property/getAll?page=${page}&size=4`)
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)

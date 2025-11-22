@@ -105,14 +105,14 @@ export default function LoginPage() {
                   </p>
                 </div>
 
-                <div className="mt-6 p-4 bg-muted rounded-lg">
+                {/* <div className="mt-6 p-4 bg-muted rounded-lg">
                   <p className="text-sm font-medium mb-2">Demo Credentials:</p>
                   <p className="text-xs text-muted-foreground">
                     Email: Agent@test.com
                     <br />
                     Password: Test@123
                   </p>
-                </div>
+                </div> */}
               </form>
             </CardContent>
           </Card>
